@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Proposal</title>
+  <style>
+    body {
+      font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 20px;
+      color: #E2E8F0;
+      background-color: #1E293B;
+      line-height: 1.5;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 1.25rem;
+    }
+    
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 2rem;
+      color: #E2E8F0;
+    }
+    
+    .proposal-title {
+      font-size: 1.5rem;
+      font-weight: bold;
+      margin: 0;
+    }
+    
+    .proposal-id {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-top: 0.25rem;
+      color: #3B82F6;
+    }
+    
+    .status {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.875rem;
+      text-transform: capitalize;
+    }
+    
+    .status-accepted {
+      background-color: rgba(16, 185, 129, 0.1);
+      color: #10B981;
+    }
+    
+    .status-sent {
+      background-color: rgba(96, 165, 250, 0.1);
+      color: #60A5FA;
+    }
+    
+    .status-rejected {
+      background-color: rgba(239, 68, 68, 0.1);
+      color: #EF4444;
+    }
+    
+    .status-negotiating {
+      background-color: rgba(251, 191, 36, 0.1);
+      color: #FBBF24;
+    }
+    
+    .status-draft {
+      background-color: rgba(148, 163, 184, 0.1);
+      color: #94A3B8;
+    }
+    
+    .title-text {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+    
+    .dates {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 2rem;
+      font-size: 0.875rem;
+    }
+    
+    .date-group span:first-child {
+      color: #94A3B8;
+      margin-right: 0.5rem;
+    }
+    
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+    
+    .section-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      font-weight: 500;
+      color: #94A3B8;
+      margin-bottom: 0.5rem;
+    }
+    
+    .client-name {
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+    
+    .address, .contact {
+      font-size: 0.875rem;
+      white-space: pre-line;
+      margin-top: 0.25rem;
+      color: #E2E8F0;
+    }
+    
+    .section {
+      margin-bottom: 1.5rem;
+    }
+    
+    .section-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      font-weight: 500;
+      color: #94A3B8;
+      margin-bottom: 0.5rem;
+    }
+    
+    .section-content {
+      font-size: 0.875rem;
+      white-space: pre-line;
+    }
+    
+    .deliverables {
+      list-style-type: disc;
+      margin: 0.5rem 0 0 1.5rem;
+      padding-left: 0;
+    }
+    
+    .deliverables li {
+      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
+    }
+    
+    .budget-section {
+      background-color: rgba(59, 130, 246, 0.1);
+      padding: 1rem;
+      border-radius: 0.5rem;
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+    
+    .budget-amount {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #3B82F6;
+      margin-top: 0.5rem;
+    }
+
+    /* Add styles for rich text content */
+    .rich-content h1 {
+      font-size: 1.5rem;
+      font-weight: bold;
+      margin-bottom: 0.75rem;
+    }
+    
+    .rich-content h2 {
+      font-size: 1.25rem;
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+    }
+    
+    .rich-content h3 {
+      font-size: 1.1rem;
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+    }
+    
+    .rich-content p {
+      margin-bottom: 0.75rem;
+    }
+    
+    .rich-content ul, .rich-content ol {
+      margin-top: 0.5rem;
+      margin-bottom: 0.75rem;
+      padding-left: 1.5rem;
+    }
+    
+    .rich-content ul {
+      list-style-type: disc;
+    }
+    
+    .rich-content ol {
+      list-style-type: decimal;
+    }
+    
+    .rich-content a {
+      color: #3B82F6;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div>
+        <h1 class="proposal-title">PROPOSAL</h1>
+        <p class="proposal-id">ID: {{proposal._id}}</p>
+      </div>
+      
+      <div>
+        {{#if isAccepted}}
+          <span class="status status-accepted">accepted</span>
+        {{else if isSent}}
+          <span class="status status-sent">sent</span>
+        {{else if isRejected}}
+          <span class="status status-rejected">rejected</span>
+        {{else if isNegotiating}}
+          <span class="status status-negotiating">negotiating</span>
+        {{else}}
+          <span class="status status-draft">draft</span>
+        {{/if}}
+      </div>
+    </div>
+    
+    <div class="title-text">{{proposal.title}}</div>
+    
+    <div class="dates">
+      <div class="date-group">
+        <span>Created:</span>
+        <span>{{formatDate proposal.createdAt}}</span>
+      </div>
+      {{#if proposal.sentDate}}
+      <div class="date-group">
+        <span>Sent:</span>
+        <span>{{formatDate proposal.sentDate}}</span>
+      </div>
+      {{/if}}
+    </div>
+    
+    <div class="grid">
+      <div>
+        <div class="section-label">Client Details</div>
+        <div class="client-name">{{proposal.clientDetails.name}}</div>
+        <div class="address">{{proposal.clientDetails.address}}</div>
+        <div class="contact">
+          {{proposal.clientDetails.email}}<br>
+          {{proposal.clientDetails.phone}}
+        </div>
+      </div>
+      
+      {{#if proposal.projectId}}
+      <div>
+        <div class="section-label">Project Reference</div>
+        <div class="contact">Project ID: {{proposal.projectId}}</div>
+      </div>
+      {{/if}}
+    </div>
+    
+    <div class="section">
+      <div class="section-title">Description</div>
+      <div class="section-content rich-content">
+        {{{safeHtml proposal.description}}}
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">Scope</div>
+      <div class="section-content rich-content">
+        {{{safeHtml proposal.scope}}}
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">Timeline</div>
+      <div class="section-content rich-content">
+        {{{safeHtml proposal.timeline}}}
+      </div>
+    </div>
+    
+    <div class="section">
+      <div class="section-title">Deliverables</div>
+      <ul class="deliverables">
+        {{#each proposal.deliverables}}
+          <li>{{this}}</li>
+        {{/each}}
+      </ul>
+    </div>
+    
+    <div class="budget-section">
+      <div class="section-title">Budget Estimate</div>
+      <div class="budget-amount">{{formatCurrency proposal.budgetEstimate}}</div>
+    </div>
+    
+    {{#if proposal.notes}}
+      <div class="section">
+        <div class="section-title">Notes</div>
+        <div class="section-content rich-content">
+          {{{safeHtml proposal.notes}}}
+        </div>
+      </div>
+    {{/if}}
+    
+    {{#if proposal.terms}}
+      <div class="section">
+        <div class="section-title">Terms and Conditions</div>
+        <div class="section-content rich-content">
+          {{{safeHtml proposal.terms}}}
+        </div>
+      </div>
+    {{/if}}
+  </div>
+</body>
+</html>
