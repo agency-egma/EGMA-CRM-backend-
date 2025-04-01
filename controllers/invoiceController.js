@@ -196,7 +196,7 @@ export const generateFromProject = asyncHandler(async (req, res, next) => {
     },
     // Dates
     issuedDate: req.body.issuedDate || new Date(),
-    dueDate: req.body.dueDate || new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+    dueDate: req.body.dueDate || null, // Allow null dueDate
     // Additional info
     notes: req.body.notes,
     terms: req.body.terms,

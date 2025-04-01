@@ -82,7 +82,7 @@ const invoiceSchema = new Schema({
   },
 
   issuedDate: { type: Date, default: Date.now }, // Invoice date
-  dueDate: { type: Date, required: true }, // Payment due date
+  dueDate: { type: Date, required: false }, // Payment due date - now optional
   
   notes: { type: String }, // Additional notes on the invoice
   terms: { type: String }, // Terms and conditions
@@ -134,8 +134,8 @@ invoiceSchema.pre("save", function (next) {
     this.payment.status = "paid";
   }
   
-  // Check if invoice is overdue
-  if (new Date() > this.dueDate && this.payment.amountDue > 0) {
+  // Check if invoice is overdue - only if due date is set
+  if (this.dueDate && new Date() > this.dueDate && this.payment.amountDue > 0) {
     this.payment.status = "overdue";
   }
   

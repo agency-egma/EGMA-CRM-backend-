@@ -298,10 +298,12 @@
         <span>{{formatDate invoice.issuedDate}}</span>
       </div>
       
+      {{#if invoice.dueDate}}
       <div class="detail-row">
         <span class="detail-label">Payment Due:</span>
         <span>{{formatDate invoice.dueDate}}</span>
       </div>
+      {{/if}}
     </div>
     
     <table class="items-table">
