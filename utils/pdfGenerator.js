@@ -96,6 +96,56 @@ export const generateInvoicePDF = async (invoice) => {
 
     // Use a manual delay instead of waitForTimeout (which isn't available in some Puppeteer versions)
     await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Check content height and determine if we need to force page breaks
+    await page.evaluate(() => {
+      const notesSection = document.querySelector('.notes-section');
+      const termsSection = document.querySelector('.terms-section');
+      
+      // If either section doesn't exist, no need to proceed
+      if ((!notesSection && !termsSection)) return;
+      
+      // Get the main content container
+      const mainContent = document.querySelector('.invoice-items-container');
+      if (!mainContent) return;
+      
+      // Calculate the height of the page and main content
+      const pageHeight = document.body.clientHeight;
+      const mainContentRect = mainContent.getBoundingClientRect();
+      const mainContentBottom = mainContentRect.bottom;
+      
+      // Create a container for notes and terms to keep them together
+      const footerContainer = document.createElement('div');
+      footerContainer.classList.add('footer-container');
+      
+      // Apply consistent styling for both cases
+      footerContainer.style.pageBreakInside = 'avoid';
+      footerContainer.style.marginTop = '2rem';
+      footerContainer.style.paddingTop = '1rem';
+      
+      // If main content takes up more than 75% of the page height, move notes and terms to second page
+      if (mainContentBottom > pageHeight * 0.75) {
+        footerContainer.style.pageBreakBefore = 'always';
+        // Add extra styling for second page
+        footerContainer.style.paddingTop = '2rem';
+        footerContainer.style.marginTop = '0';
+      }
+      
+      // Insert the container before the notes/terms and move them inside
+      if (notesSection) {
+        notesSection.parentNode.insertBefore(footerContainer, notesSection);
+        footerContainer.appendChild(notesSection);
+      }
+      
+      if (termsSection) {
+        if (notesSection) {
+          footerContainer.appendChild(termsSection);
+        } else {
+          termsSection.parentNode.insertBefore(footerContainer, termsSection);
+          footerContainer.appendChild(termsSection);
+        }
+      }
+    });
 
     // Add custom styles for better PDF rendering
     await page.addStyleTag({
@@ -107,6 +157,15 @@ export const generateInvoicePDF = async (invoice) => {
         body {
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
+        }
+        .footer-container {
+          break-inside: avoid;
+          page-break-inside: avoid;
+          padding: 0 20px;
+        }
+        .footer-container[style*="page-break-before: always"] {
+          padding-top: 40px;
+          min-height: 100px;
         }
       `
     });

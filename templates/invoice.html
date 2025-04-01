@@ -230,6 +230,27 @@
     .payment-history-table tr:last-child td {
       border-bottom: none;
     }
+    
+    /* Added styles for second page content */
+    .footer-container {
+      margin-top: 2rem;
+    }
+    
+    @media print {
+      .footer-container {
+        padding: 0 20px;
+      }
+    }
+    
+    /* Ensure notes and terms have proper spacing */
+    .notes-section, .terms-section {
+      margin-bottom: 1.5rem;
+    }
+    
+    /* Add space between the notes and terms sections */
+    .notes-section + .terms-section {
+      margin-top: 2rem;
+    }
   </style>
 </head>
 <body>
@@ -339,86 +360,88 @@
       </tbody>
     </table>
     
-    <div class="summary">
-      <div class="summary-row">
-        <span class="summary-label">Subtotal:</span>
-        <span>{{formatCurrency invoice.payment.subtotal invoice.currency.symbol}}</span>
+    <div class="invoice-items-container">
+      <div class="summary">
+        <div class="summary-row">
+          <span class="summary-label">Subtotal:</span>
+          <span>{{formatCurrency invoice.payment.subtotal invoice.currency.symbol}}</span>
+        </div>
+        
+        {{#if invoice.payment.taxTotal}}
+          <div class="summary-row">
+            <span class="summary-label">Tax:</span>
+            <span>{{formatCurrency invoice.payment.taxTotal invoice.currency.symbol}}</span>
+          </div>
+        {{/if}}
+        
+        {{#if invoice.payment.discount}}
+          <div class="summary-row">
+            <span class="summary-label">Discount:</span>
+            <span>-{{formatCurrency invoice.payment.discount invoice.currency.symbol}}</span>
+          </div>
+        {{/if}}
+        
+        <div class="summary-row total">
+          <span class="summary-label">Total:</span>
+          <span class="summary-total">{{formatCurrency invoice.payment.totalAmount invoice.currency.symbol}}</span>
+        </div>
+        
+        <div class="summary-row">
+          <span class="summary-label">Paid:</span>
+          <span class="summary-paid">{{formatCurrency invoice.payment.amountPaid invoice.currency.symbol}}</span>
+        </div>
+        
+        <div class="summary-row">
+          <span class="summary-label">Due:</span>
+          <span class="summary-due">{{formatCurrency invoice.payment.amountDue invoice.currency.symbol}}</span>
+        </div>
       </div>
       
-      {{#if invoice.payment.taxTotal}}
-        <div class="summary-row">
-          <span class="summary-label">Tax:</span>
-          <span>{{formatCurrency invoice.payment.taxTotal invoice.currency.symbol}}</span>
+      {{#if invoice.payment.methods.length}}
+        <div class="payment-history">
+          <div class="section-title">Payment History</div>
+          <table class="payment-history-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Method</th>
+                <th>Transaction ID</th>
+                <th>Details</th>
+                <th class="text-right">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              {{#each invoice.payment.methods}}
+                <tr>
+                  <td>{{formatDate this.date}}</td>
+                  <td style="text-transform: capitalize;">{{this.method}}</td>
+                  <td>{{this.transactionId}}</td>
+                  <td>
+                    {{#if this.accountNumber}}Acc: {{this.accountNumber}}{{/if}}
+                    {{#if this.cardLast4Digits}}Card: **** {{this.cardLast4Digits}}{{/if}}
+                    {{#if this.cryptoWalletAddress}}Wallet: {{this.cryptoWalletAddress}}{{/if}}
+                    {{#if this.chequeNumber}}Cheque: {{this.chequeNumber}}{{/if}}
+                    {{#if this.upiId}}UPI: {{this.upiId}}{{/if}}
+                    {{#if this.notes}}<div style="font-style: italic; color: #94A3B8; margin-top: 0.25rem;">Note: {{this.notes}}</div>{{/if}}
+                  </td>
+                  <td class="text-right">{{formatCurrency this.amount ../invoice.currency.symbol}}</td>
+                </tr>
+              {{/each}}
+            </tbody>
+          </table>
         </div>
       {{/if}}
-      
-      {{#if invoice.payment.discount}}
-        <div class="summary-row">
-          <span class="summary-label">Discount:</span>
-          <span>-{{formatCurrency invoice.payment.discount invoice.currency.symbol}}</span>
-        </div>
-      {{/if}}
-      
-      <div class="summary-row total">
-        <span class="summary-label">Total:</span>
-        <span class="summary-total">{{formatCurrency invoice.payment.totalAmount invoice.currency.symbol}}</span>
-      </div>
-      
-      <div class="summary-row">
-        <span class="summary-label">Paid:</span>
-        <span class="summary-paid">{{formatCurrency invoice.payment.amountPaid invoice.currency.symbol}}</span>
-      </div>
-      
-      <div class="summary-row">
-        <span class="summary-label">Due:</span>
-        <span class="summary-due">{{formatCurrency invoice.payment.amountDue invoice.currency.symbol}}</span>
-      </div>
     </div>
     
-    {{#if invoice.payment.methods.length}}
-      <div class="payment-history">
-        <div class="section-title">Payment History</div>
-        <table class="payment-history-table">
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Method</th>
-              <th>Transaction ID</th>
-              <th>Details</th>
-              <th class="text-right">Amount</th>
-            </tr>
-          </thead>
-          <tbody>
-            {{#each invoice.payment.methods}}
-              <tr>
-                <td>{{formatDate this.date}}</td>
-                <td style="text-transform: capitalize;">{{this.method}}</td>
-                <td>{{this.transactionId}}</td>
-                <td>
-                  {{#if this.accountNumber}}Acc: {{this.accountNumber}}{{/if}}
-                  {{#if this.cardLast4Digits}}Card: **** {{this.cardLast4Digits}}{{/if}}
-                  {{#if this.cryptoWalletAddress}}Wallet: {{this.cryptoWalletAddress}}{{/if}}
-                  {{#if this.chequeNumber}}Cheque: {{this.chequeNumber}}{{/if}}
-                  {{#if this.upiId}}UPI: {{this.upiId}}{{/if}}
-                  {{#if this.notes}}<div style="font-style: italic; color: #94A3B8; margin-top: 0.25rem;">Note: {{this.notes}}</div>{{/if}}
-                </td>
-                <td class="text-right">{{formatCurrency this.amount ../invoice.currency.symbol}}</td>
-              </tr>
-            {{/each}}
-          </tbody>
-        </table>
-      </div>
-    {{/if}}
-    
     {{#if invoice.notes}}
-      <div class="section">
+      <div class="section notes-section">
         <div class="section-title">Notes</div>
         <div class="section-content">{{invoice.notes}}</div>
       </div>
     {{/if}}
     
     {{#if invoice.terms}}
-      <div class="section">
+      <div class="section terms-section">
         <div class="section-title">Terms and Conditions</div>
         <div class="section-content">{{invoice.terms}}</div>
       </div>
