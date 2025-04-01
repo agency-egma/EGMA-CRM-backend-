@@ -24,7 +24,8 @@
     "morgan": "^1.10.0",
     "puppeteer": "^24.4.0",
     "isomorphic-dompurify": "^1.8.0",
-    "string-strip-html": "^13.4.3"
+    "string-strip-html": "^13.4.3",
+    "jsdom": "^22.1.0"
   },
   "devDependencies": {
     "nodemon": "^2.0.22"

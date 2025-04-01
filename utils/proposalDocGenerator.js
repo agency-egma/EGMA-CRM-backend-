@@ -1,6 +1,7 @@
 import { Document, Paragraph, Table, TableRow, TableCell, TextRun, AlignmentType, 
-  BorderStyle, HeadingLevel, WidthType, TableLayoutType, UnderlineType, NumberFormat, Packer } from 'docx';
+  BorderStyle, HeadingLevel, WidthType, TableLayoutType, Packer } from 'docx';
 import { stripHtml } from 'string-strip-html';
+import { JSDOM } from 'jsdom';
 
 /**
  * Format currency for display
@@ -37,30 +38,195 @@ const formatDate = (date) => {
 const cleanHtml = (htmlContent) => {
   if (!htmlContent) return '';
   
-  // Check if content contains HTML
-  if (htmlContent.includes('<') && htmlContent.includes('>')) {
-    return stripHtml(htmlContent).result;
+  try {
+    // Check if content contains HTML
+    if (htmlContent.includes('<') && htmlContent.includes('>')) {
+      return stripHtml(htmlContent).result;
+    }
+    
+    return htmlContent;
+  } catch (error) {
+    console.error('Error cleaning HTML:', error);
+    return htmlContent || '';
   }
-  
-  return htmlContent;
+};
+
+/**
+ * Safely get text content from HTML
+ * @param {string} htmlContent - HTML content
+ * @returns {string} - Plain text content
+ */
+const getTextFromHtml = (htmlContent) => {
+  try {
+    if (!htmlContent) return '';
+    
+    // Simple HTML detection
+    if (htmlContent.includes('<') && htmlContent.includes('>')) {
+      const dom = new JSDOM(`<div>${htmlContent}</div>`);
+      return dom.window.document.querySelector('div').textContent || '';
+    }
+    
+    return htmlContent;
+  } catch (error) {
+    console.error('Error extracting text from HTML:', error);
+    return htmlContent || '';
+  }
+};
+
+/**
+ * Extract tables from HTML content
+ * @param {string} htmlContent - HTML content
+ * @returns {Array} - Array of [tableElements, textContent]
+ */
+const extractTablesAndText = (htmlContent) => {
+  try {
+    if (!htmlContent || !(htmlContent.includes('<table') && htmlContent.includes('</table>'))) {
+      return [[], getTextFromHtml(htmlContent)];
+    }
+    
+    const dom = new JSDOM(`<div>${htmlContent}</div>`);
+    const tableElements = Array.from(dom.window.document.querySelectorAll('table'));
+    
+    // Get text outside tables
+    const div = dom.window.document.querySelector('div');
+    const tableNodes = Array.from(div.querySelectorAll('table'));
+    tableNodes.forEach(table => {
+      table.parentNode.removeChild(table);
+    });
+    
+    return [tableElements, div.textContent.trim()];
+  } catch (error) {
+    console.error('Error extracting tables:', error);
+    return [[], getTextFromHtml(htmlContent)];
+  }
+};
+
+/**
+ * Convert HTML table to DOCX Table safely
+ * @param {HTMLTableElement} tableNode - The HTML table node
+ * @returns {Table} - DOCX Table object
+ */
+const convertHtmlTableToDocx = (tableNode) => {
+  try {
+    const rows = Array.from(tableNode.querySelectorAll('tr'));
+    if (rows.length === 0) {
+      return null;
+    }
+    
+    const tableRows = [];
+    
+    for (const row of rows) {
+      const cells = Array.from(row.querySelectorAll('th, td'));
+      if (cells.length === 0) continue;
+      
+      const tableCells = [];
+      
+      for (const cell of cells) {
+        const isHeader = cell.nodeName === 'TH';
+        const cellText = cell.textContent.trim();
+        
+        tableCells.push(new TableCell({
+          children: [new Paragraph({
+            children: [new TextRun({
+              text: cellText,
+              bold: isHeader
+            })],
+          })],
+          margins: {
+            top: 100,
+            bottom: 100,
+            left: 100,
+            right: 100,
+          }
+        }));
+      }
+      
+      tableRows.push(new TableRow({
+        children: tableCells
+      }));
+    }
+    
+    return new Table({
+      rows: tableRows,
+      width: {
+        size: 100,
+        type: WidthType.PERCENTAGE
+      },
+      layout: TableLayoutType.FIXED,
+      borders: {
+        top: { style: BorderStyle.SINGLE, size: 1, color: "BBBBBB" },
+        bottom: { style: BorderStyle.SINGLE, size: 1, color: "BBBBBB" },
+        left: { style: BorderStyle.SINGLE, size: 1, color: "BBBBBB" },
+        right: { style: BorderStyle.SINGLE, size: 1, color: "BBBBBB" },
+        insideHorizontal: { style: BorderStyle.SINGLE, size: 1, color: "BBBBBB" },
+        insideVertical: { style: BorderStyle.SINGLE, size: 1, color: "BBBBBB" }
+      }
+    });
+  } catch (error) {
+    console.error('Error converting HTML table to DOCX:', error);
+    return null;
+  }
+};
+
+/**
+ * Process content with tables and add to sections
+ * @param {string} htmlContent - HTML content to process
+ * @returns {Array} - Array of document elements
+ */
+const processContentWithTables = (htmlContent) => {
+  try {
+    const contentElements = [];
+    const [tables, textContent] = extractTablesAndText(htmlContent);
+    
+    // Add text content first (if exists)
+    if (textContent) {
+      contentElements.push(
+        new Paragraph({
+          text: textContent,
+          spacing: { after: 200 }
+        })
+      );
+    }
+    
+    // Add tables
+    for (const table of tables) {
+      const docxTable = convertHtmlTableToDocx(table);
+      if (docxTable) {
+        contentElements.push(docxTable);
+        // Add spacing after table
+        contentElements.push(
+          new Paragraph({
+            text: '',
+            spacing: { after: 200 }
+          })
+        );
+      }
+    }
+    
+    return contentElements;
+  } catch (error) {
+    console.error('Error processing content with tables:', error);
+    // Fallback to plain text
+    return [
+      new Paragraph({
+        text: cleanHtml(htmlContent),
+        spacing: { after: 200 }
+      })
+    ];
+  }
 };
 
 /**
  * Generate Word Document from proposal data
  * @param {Object} proposal - Proposal data
- * @returns {Buffer} - Word document buffer
+ * @returns {Promise<Buffer>} - Word document buffer
  */
 export const generateProposalDOC = async (proposal) => {
   try {
+    console.log('Starting document generation');
+    
     // Create a clean copy of the proposal data
     const safeProposal = JSON.parse(JSON.stringify(proposal));
-    
-    // Clean HTML content in text fields
-    safeProposal.description = cleanHtml(safeProposal.description);
-    safeProposal.scope = cleanHtml(safeProposal.scope);
-    safeProposal.timeline = cleanHtml(safeProposal.timeline);
-    safeProposal.terms = cleanHtml(safeProposal.terms);
-    safeProposal.notes = cleanHtml(safeProposal.notes);
     
     // Document sections
     const sections = [];
@@ -189,12 +355,12 @@ export const generateProposalDOC = async (proposal) => {
         text: "DESCRIPTION",
         heading: HeadingLevel.HEADING_3,
         spacing: { before: 400, after: 200 }
-      }),
-      new Paragraph({
-        text: safeProposal.description,
-        spacing: { after: 400 }
       })
     );
+    
+    // Process description content with tables
+    const descriptionContent = processContentWithTables(safeProposal.description);
+    sections.push(...descriptionContent);
     
     // Scope
     sections.push(
@@ -202,12 +368,12 @@ export const generateProposalDOC = async (proposal) => {
         text: "SCOPE",
         heading: HeadingLevel.HEADING_3,
         spacing: { before: 400, after: 200 }
-      }),
-      new Paragraph({
-        text: safeProposal.scope,
-        spacing: { after: 400 }
       })
     );
+    
+    // Process scope content with tables
+    const scopeContent = processContentWithTables(safeProposal.scope);
+    sections.push(...scopeContent);
     
     // Timeline
     sections.push(
@@ -215,12 +381,12 @@ export const generateProposalDOC = async (proposal) => {
         text: "TIMELINE",
         heading: HeadingLevel.HEADING_3,
         spacing: { before: 400, after: 200 }
-      }),
-      new Paragraph({
-        text: safeProposal.timeline,
-        spacing: { after: 400 }
       })
     );
+    
+    // Process timeline content with tables
+    const timelineContent = processContentWithTables(safeProposal.timeline);
+    sections.push(...timelineContent);
     
     // Deliverables
     sections.push(
@@ -232,17 +398,28 @@ export const generateProposalDOC = async (proposal) => {
     );
     
     // Add deliverables as bullet points
-    safeProposal.deliverables.forEach(deliverable => {
+    if (Array.isArray(safeProposal.deliverables) && safeProposal.deliverables.length > 0) {
+      safeProposal.deliverables.forEach(deliverable => {
+        if (deliverable) {
+          sections.push(
+            new Paragraph({
+              text: deliverable,
+              bullet: {
+                level: 0
+              },
+              spacing: { after: 100 }
+            })
+          );
+        }
+      });
+    } else {
       sections.push(
         new Paragraph({
-          text: deliverable,
-          bullet: {
-            level: 0
-          },
-          spacing: { after: 100 }
+          text: "No deliverables specified",
+          spacing: { after: 200 }
         })
       );
-    });
+    }
     
     // Budget
     sections.push(
@@ -272,12 +449,12 @@ export const generateProposalDOC = async (proposal) => {
           text: "NOTES",
           heading: HeadingLevel.HEADING_3,
           spacing: { before: 400, after: 200 }
-        }),
-        new Paragraph({
-          text: safeProposal.notes,
-          spacing: { after: 400 }
         })
       );
+      
+      // Process notes content with tables
+      const notesContent = processContentWithTables(safeProposal.notes);
+      sections.push(...notesContent);
     }
     
     // Terms section
@@ -287,13 +464,15 @@ export const generateProposalDOC = async (proposal) => {
           text: "TERMS AND CONDITIONS",
           heading: HeadingLevel.HEADING_3,
           spacing: { before: 400, after: 200 }
-        }),
-        new Paragraph({
-          text: safeProposal.terms,
-          spacing: { after: 200 }
         })
       );
+      
+      // Process terms content with tables
+      const termsContent = processContentWithTables(safeProposal.terms);
+      sections.push(...termsContent);
     }
+    
+    console.log('Creating document with sections');
     
     // Create document with all sections
     const doc = new Document({
@@ -305,8 +484,12 @@ export const generateProposalDOC = async (proposal) => {
       ]
     });
     
-    // Create a buffer with the Word document content - FIXED LINE
+    console.log('Packing document to buffer');
+    
+    // Create a buffer with the Word document content
     const buffer = await Packer.toBuffer(doc);
+    
+    console.log('Document generation complete');
     
     return buffer;
   } catch (error) {

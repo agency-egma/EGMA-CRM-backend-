@@ -331,15 +331,20 @@ export const deleteProposal = async (req, res, next) => {
 // @route   GET /api/proposals/:id/docx
 // @access  Private
 export const downloadProposalDOCX = async (req, res, next) => {
-  const proposal = await Proposal.findById(req.params.id);
-  
-  if (!proposal) {
-    return next(new ErrorResponse(`Proposal not found with id of ${req.params.id}`, 404));
+  try {
+    const proposal = await Proposal.findById(req.params.id);
+    
+    if (!proposal) {
+      return next(new ErrorResponse(`Proposal not found with id of ${req.params.id}`, 404));
+    }
+    
+    const buffer = await generateProposalDOC(proposal);
+    
+    res.setHeader('Content-Disposition', `attachment; filename="Proposal-${proposal._id}.docx"`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.send(buffer);
+  } catch (error) {
+    console.error('Error generating DOCX:', error);
+    return next(new ErrorResponse(`Error generating document: ${error.message}`, 500));
   }
-  
-  const buffer = await generateProposalDOC(proposal);
-  
-  res.setHeader('Content-Disposition', `attachment; filename="Proposal-${proposal._id}.docx"`);
-  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
-  res.send(buffer);
 };
