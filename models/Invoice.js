@@ -13,6 +13,11 @@ const invoiceSchema = new Schema({
     ref: "Project" 
   }, // Reference to project
   
+  currency: {
+    code: { type: String, default: 'INR' }, // Currency code (ISO 4217)
+    symbol: { type: String, default: '₹' }  // Currency symbol
+  },
+  
   agency: { // Agency details
     name: { type: String, required: true, default: "EGMA" },
     email: { type: String, required: true },

@@ -17,6 +17,10 @@ const proposalSchema = new Schema({
   scope: { type: String, required: true },
   deliverables: [{ type: String }],
   timeline: { type: String, required: true },
+  currency: {
+    code: { type: String, default: 'INR' }, // Currency code (ISO 4217)
+    symbol: { type: String, default: '₹' }  // Currency symbol
+  },
   budgetEstimate: { type: Number, required: true },
   terms: { type: String },
   status: { 
@@ -28,7 +32,7 @@ const proposalSchema = new Schema({
   notes: { type: String },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
-});
+}, { timestamps: true });
 
 const Proposal = mongoose.model("Proposal", proposalSchema);
 export default Proposal;

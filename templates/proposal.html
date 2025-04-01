@@ -294,7 +294,7 @@
     
     <div class="budget-section">
       <div class="section-title">Budget Estimate</div>
-      <div class="budget-amount">{{formatCurrency proposal.budgetEstimate}}</div>
+      <div class="budget-amount">{{formatCurrency proposal.budgetEstimate proposal.currency.symbol}}</div>
     </div>
     
     {{#if proposal.notes}}

@@ -167,6 +167,11 @@ export const generateFromProject = asyncHandler(async (req, res, next) => {
   // Create basic invoice data from project and request body
   const invoiceData = {
     projectId: project._id,
+    // Currency information from project or request body
+    currency: req.body.currency || project.currency || {
+      code: 'INR',
+      symbol: '₹'
+    },
     // Use client data from request body, fall back to project data
     client: {
       name: req.body.client?.name || project.client.name,

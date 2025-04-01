@@ -26,6 +26,10 @@ const projectSchema = new Schema({
   },
   startDate: { type: Date, required: true }, // Start date
   endDate: { type: Date }, // Expected end date
+  currency: {
+    code: { type: String, default: 'INR' }, // Currency code (ISO 4217)
+    symbol: { type: String, default: '₹' }  // Currency symbol
+  },
   totalBudget: { type: Number, required: true }, // Total budget
   amountReceived: { type: Number, default: 0 }, // Kitna paisa mil chuka
   description: { type: String }, // Project details

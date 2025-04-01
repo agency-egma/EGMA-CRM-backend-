@@ -321,17 +321,17 @@
           <tr>
             <td>{{this.description}}</td>
             <td class="text-center">{{this.quantity}}</td>
-            <td class="text-right">{{formatCurrency this.price}}</td>
+            <td class="text-right">{{formatCurrency this.price ../invoice.currency.symbol}}</td>
             {{#if ../invoice.goods.[0].taxRate}}
               <td class="text-right">
                 {{#if this.taxRate}}
-                  {{this.taxRate}}% ({{formatCurrency this.taxAmount}})
+                  {{this.taxRate}}% ({{formatCurrency this.taxAmount ../invoice.currency.symbol}})
                 {{else}}
                   -
                 {{/if}}
               </td>
             {{/if}}
-            <td class="text-right">{{formatCurrency (add this.total this.taxAmount)}}</td>
+            <td class="text-right">{{formatCurrency (add this.total this.taxAmount) ../invoice.currency.symbol}}</td>
           </tr>
         {{/each}}
       </tbody>
@@ -340,36 +340,36 @@
     <div class="summary">
       <div class="summary-row">
         <span class="summary-label">Subtotal:</span>
-        <span>{{formatCurrency invoice.payment.subtotal}}</span>
+        <span>{{formatCurrency invoice.payment.subtotal invoice.currency.symbol}}</span>
       </div>
       
       {{#if invoice.payment.taxTotal}}
         <div class="summary-row">
           <span class="summary-label">Tax:</span>
-          <span>{{formatCurrency invoice.payment.taxTotal}}</span>
+          <span>{{formatCurrency invoice.payment.taxTotal invoice.currency.symbol}}</span>
         </div>
       {{/if}}
       
       {{#if invoice.payment.discount}}
         <div class="summary-row">
           <span class="summary-label">Discount:</span>
-          <span>-{{formatCurrency invoice.payment.discount}}</span>
+          <span>-{{formatCurrency invoice.payment.discount invoice.currency.symbol}}</span>
         </div>
       {{/if}}
       
       <div class="summary-row total">
         <span class="summary-label">Total:</span>
-        <span class="summary-total">{{formatCurrency invoice.payment.totalAmount}}</span>
+        <span class="summary-total">{{formatCurrency invoice.payment.totalAmount invoice.currency.symbol}}</span>
       </div>
       
       <div class="summary-row">
         <span class="summary-label">Paid:</span>
-        <span class="summary-paid">{{formatCurrency invoice.payment.amountPaid}}</span>
+        <span class="summary-paid">{{formatCurrency invoice.payment.amountPaid invoice.currency.symbol}}</span>
       </div>
       
       <div class="summary-row">
         <span class="summary-label">Due:</span>
-        <span class="summary-due">{{formatCurrency invoice.payment.amountDue}}</span>
+        <span class="summary-due">{{formatCurrency invoice.payment.amountDue invoice.currency.symbol}}</span>
       </div>
     </div>
     
@@ -400,7 +400,7 @@
                   {{#if this.upiId}}UPI: {{this.upiId}}{{/if}}
                   {{#if this.notes}}<div style="font-style: italic; color: #94A3B8; margin-top: 0.25rem;">Note: {{this.notes}}</div>{{/if}}
                 </td>
-                <td class="text-right">{{formatCurrency this.amount}}</td>
+                <td class="text-right">{{formatCurrency this.amount ../invoice.currency.symbol}}</td>
               </tr>
             {{/each}}
           </tbody>

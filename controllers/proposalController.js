@@ -38,53 +38,37 @@ export const getProposal = async (req, res, next) => {
  * @route   POST /api/proposals
  * @access  Private
  */
-export const createProposal = asyncHandler(async (req, res, next) => {
-  // Handle empty projectId properly
-  if (req.body.projectId === '') {
-    delete req.body.projectId;
-  }
-
-  // Create the proposal
-  const proposal = await Proposal.create(req.body);
-
-  // If projectId is provided and valid, update the project with the proposalId
-  if (proposal.projectId) {
-    try {
-      // Map proposal status to project proposal status
-      const mapStatus = (proposalStatus) => {
-        switch(proposalStatus) {
-          case 'sent': return 'sent';
-          case 'accepted': return 'accepted';
-          case 'rejected': return 'rejected';
-          case 'negotiating': return 'needs_revision';
-          default: return 'not_sent';
-        }
-      };
-
-      // Find the project and update it with the new proposal ID and status
-      await Project.findByIdAndUpdate(
-        proposal.projectId,
-        {
-          proposal: {
-            id: proposal._id,
-            status: mapStatus(proposal.status),
-            sentDate: proposal.sentDate
-          }
-        },
-        { new: true }
-      );
-      console.log(`Project ${proposal.projectId} updated with proposal ${proposal._id}`);
-    } catch (error) {
-      console.error(`Error updating project with proposal ID: ${error.message}`);
-      // Continue execution even if project update fails
+export const createProposal = async (req, res) => {
+  try {
+    const proposalData = req.body;
+    
+    // Make sure there's no proposalNumber property
+    if (proposalData.proposalNumber) {
+      delete proposalData.proposalNumber;
     }
+    
+    // Set default currency if not provided
+    if (!proposalData.currency) {
+      proposalData.currency = {
+        code: 'INR',
+        symbol: '₹'
+      };
+    }
+    
+    const proposal = new Proposal(proposalData);
+    const savedProposal = await proposal.save();
+    
+    res.status(201).json({
+      success: true,
+      data: savedProposal
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      error: error.message
+    });
   }
-
-  res.status(201).json({
-    success: true,
-    data: proposal
-  });
-});
+};
 
 /**
  * @desc    Update a proposal
