@@ -16,8 +16,10 @@ import proposalRoutes from './routes/proposalRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
 import authRoutes from './routes/authRoutes.js';
+import userRoutes from './routes/userRoutes.js';
 
 const app = express();
+
 
 // Middleware
 app.use(express.json({ limit: '50mb' }));
@@ -43,6 +45,7 @@ app.use('/api/invoices', invoiceRoutes);
 app.use('/api/proposals', proposalRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/users', userRoutes); // Add user routes
 
 // Error handler middleware
 app.use(errorHandler);

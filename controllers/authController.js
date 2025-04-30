@@ -21,12 +21,13 @@ export const register = asyncHandler(async (req, res, next) => {
   const verificationToken = user.generateVerificationToken();
   await user.save({ validateBeforeSave: false });
 
-  // Create verification URL
-  const verificationUrl = `${req.protocol}://${req.get(
-    'host'
-  )}/api/auth/verify-email/${verificationToken}`;
+  // Use the FRONTEND_URL from environment variables instead of req.protocol and req.get('host')
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  
+  // Create verification URL that points to the frontend route
+  const verificationUrl = `${frontendUrl}/verify-email/${verificationToken}`;
 
-  const message = `You are receiving this email because you need to verify your email address. Please go to: \n\n ${verificationUrl}`;
+  const message = `You are receiving this email because you need to verify your email address. Please click the link below to verify your email: \n\n ${verificationUrl}`;
 
   try {
     await sendEmail({
@@ -155,12 +156,13 @@ export const forgotPassword = asyncHandler(async (req, res, next) => {
 
   await user.save({ validateBeforeSave: false });
 
-  // Create reset URL
-  const resetUrl = `${req.protocol}://${req.get(
-    'host'
-  )}/api/auth/reset-password/${resetToken}`;
+  // Use the FRONTEND_URL environment variable for the reset URL
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  
+  // Create reset URL pointing to the frontend
+  const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
 
-  const message = `You are receiving this email because you (or someone else) has requested the reset of a password. Please make a PUT request to: \n\n ${resetUrl}`;
+  const message = `You are receiving this email because you (or someone else) has requested the reset of a password. Please click the link below to reset your password: \n\n ${resetUrl}`;
 
   try {
     await sendEmail({
