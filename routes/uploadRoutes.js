@@ -2,8 +2,12 @@ import express from 'express';
 import { uploadImage } from '../utils/cloudinary.js';
 import asyncHandler from '../utils/asyncHandler.js';
 import ErrorResponse from '../utils/errorResponse.js';
+import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
+
+// Apply authentication middleware to all routes
+router.use(protect);
 
 // Upload logo image
 router.post('/logo', asyncHandler(async (req, res, next) => {

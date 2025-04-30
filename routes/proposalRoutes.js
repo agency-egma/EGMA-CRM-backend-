@@ -8,8 +8,12 @@ import {
   deleteProposal,
   downloadProposalDOCX
 } from '../controllers/proposalController.js';
+import { protect } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
+
+// Apply authentication middleware to all routes
+router.use(protect);
 
 // Get all proposals and create a new proposal
 router.route('/')
