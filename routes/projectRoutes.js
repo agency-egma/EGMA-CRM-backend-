@@ -2,12 +2,14 @@ import express from 'express';
 import { advancedResults } from '../utils/routeUtils.js';
 import Project from '../models/Project.js';
 import * as projectController from '../controllers/projectController.js';
-import { protect } from '../middleware/authMiddleware.js';
+import { protect, authorize } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
 // Apply authentication middleware to all routes
 router.use(protect);
+// Restrict to admin only
+router.use(authorize('admin'));
 
 // Apply advanced results middleware to GET all route
 router.get('/', advancedResults(Project, 'invoiceId'), projectController.getAll);
