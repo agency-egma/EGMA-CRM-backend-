@@ -271,10 +271,33 @@ const sendTokenResponse = (user, statusCode, res) => {
     ),
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    domain: process.env.NODE_ENV === 'production' ? '.egma.in' : undefined, // Use root domain in production
-    sameSite: 'none', // Allow cross-site cookies for production
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
     path: '/'
   };
+
+  // For production, make cookies accessible across subdomains
+  if (process.env.NODE_ENV === 'production') {
+    // Get the domain from the FRONTEND_URL env variable
+    try {
+      const frontendUrl = new URL(process.env.FRONTEND_URL);
+      // Extract the domain part without protocol/port
+      const domain = frontendUrl.hostname;
+      
+      // If it's not localhost and has at least one dot, set the domain
+      if (domain !== 'localhost' && domain.includes('.')) {
+        // Use the domain without subdomain for cookies to work across subdomains
+        const parts = domain.split('.');
+        const rootDomain = parts.length > 1 ? 
+          `.${parts[parts.length - 2]}.${parts[parts.length - 1]}` : 
+          domain;
+        
+        options.domain = rootDomain;
+        console.log(`Setting cookie domain to: ${rootDomain}`);
+      }
+    } catch (error) {
+      console.error('Error parsing FRONTEND_URL for cookie domain:', error);
+    }
+  }
 
   res
     .status(statusCode)
