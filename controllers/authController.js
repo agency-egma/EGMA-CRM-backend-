@@ -271,11 +271,11 @@ const sendTokenResponse = (user, statusCode, res) => {
     ),
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    domain: process.env.NODE_ENV === 'production' ? '.egma.in' : undefined, // Use root domain in production
+    sameSite: 'none', // Allow cross-site cookies for production
     path: '/'
   };
 
-  // Set both cookie names to ensure compatibility
   res
     .status(statusCode)
     .cookie('token', token, options)
