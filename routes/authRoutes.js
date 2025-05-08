@@ -33,4 +33,13 @@ router.get('/logout', logout);
 router.put('/update-details', updateDetails);
 router.put('/update-password', updatePassword);
 
+// Token validation check route
+router.get('/check', protect, (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Token is valid",
+    userId: req.user.id
+  });
+});
+
 export default router;

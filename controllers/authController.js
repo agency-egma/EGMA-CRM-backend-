@@ -248,6 +248,18 @@ export const updatePassword = asyncHandler(async (req, res, next) => {
   sendTokenResponse(user, 200, res);
 });
 
+// @desc    Check if the user's token is valid
+// @route   GET /api/auth/check
+// @access  Private
+export const checkAuth = asyncHandler(async (req, res) => {
+  // If middleware has passed, the user is authenticated
+  res.status(200).json({
+    success: true,
+    message: "Token is valid",
+    userId: req.user.id
+  });
+});
+
 // Helper function to get token from model, create cookie and send response
 const sendTokenResponse = (user, statusCode, res) => {
   // Create token
@@ -257,16 +269,17 @@ const sendTokenResponse = (user, statusCode, res) => {
     expires: new Date(
       Date.now() + process.env.JWT_COOKIE_EXPIRE * 24 * 60 * 60 * 1000
     ),
-    httpOnly: true
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+    path: '/'
   };
 
-  if (process.env.NODE_ENV === 'production') {
-    options.secure = true;
-  }
-
+  // Set both cookie names to ensure compatibility
   res
     .status(statusCode)
     .cookie('token', token, options)
+    .cookie('auth_token', token, options)
     .json({
       success: true,
       token
