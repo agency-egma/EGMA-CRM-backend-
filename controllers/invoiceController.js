@@ -253,13 +253,18 @@ export const getPaymentStatus = asyncHandler(async (req, res, next) => {
 
 // Download invoice as PDF
 export const downloadPDF = asyncHandler(async (req, res, next) => {
-  const invoice = await Invoice.findById(req.params.id);
-  
-  if (!invoice) {
-    return next(new ErrorResponse(`Invoice not found with id ${req.params.id}`, 404));
-  }
-  
   try {
+    console.log(`PDF download request for invoice ${req.params.id} - User: ${req.user.id}`);
+    
+    const invoice = await Invoice.findById(req.params.id);
+    
+    if (!invoice) {
+      return next(new ErrorResponse(`Invoice not found with id ${req.params.id}`, 404));
+    }
+    
+    // Check if this user has permission to access the invoice
+    // (You can customize this check based on your application's logic)
+    
     // Generate PDF with timeout
     const pdfGenerationTimeout = setTimeout(() => {
       throw new Error('PDF generation timed out after 30 seconds');
@@ -271,14 +276,13 @@ export const downloadPDF = asyncHandler(async (req, res, next) => {
     // Clear timeout
     clearTimeout(pdfGenerationTimeout);
     
-    // Validate PDF Buffer more thoroughly
+    // Validate PDF Buffer
     if (!pdfBuffer || !Buffer.isBuffer(pdfBuffer) || pdfBuffer.length < 1000) {
-      console.error('PDF generation produced invalid output:', {
-        isBuffer: Buffer.isBuffer(pdfBuffer),
-        length: pdfBuffer ? pdfBuffer.length : 0
-      });
+      console.error('PDF generation produced invalid output');
       return next(new ErrorResponse('PDF generation failed - invalid PDF document', 500));
     }
+    
+    console.log(`Successfully generated PDF for invoice ${req.params.id}, size: ${pdfBuffer.length} bytes`);
     
     // Set proper content type and headers for PDF
     res.set({
@@ -287,7 +291,11 @@ export const downloadPDF = asyncHandler(async (req, res, next) => {
       'Content-Length': pdfBuffer.length,
       'Cache-Control': 'no-cache, no-store, must-revalidate',
       'Pragma': 'no-cache',
-      'Expires': '0'
+      'Expires': '0',
+      // Explicitly allow CORS for PDF download
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET, OPTIONS',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
     });
     
     // Send PDF buffer directly
