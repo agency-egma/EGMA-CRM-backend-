@@ -260,11 +260,23 @@ export const downloadPDF = asyncHandler(async (req, res, next) => {
   }
   
   try {
+    // Generate PDF with timeout
+    const pdfGenerationTimeout = setTimeout(() => {
+      throw new Error('PDF generation timed out after 30 seconds');
+    }, 30000);
+    
     // Generate PDF
     const pdfBuffer = await generateInvoicePDF(invoice);
     
-    // Validate PDF Buffer
-    if (!pdfBuffer || pdfBuffer.length < 1000) {
+    // Clear timeout
+    clearTimeout(pdfGenerationTimeout);
+    
+    // Validate PDF Buffer more thoroughly
+    if (!pdfBuffer || !Buffer.isBuffer(pdfBuffer) || pdfBuffer.length < 1000) {
+      console.error('PDF generation produced invalid output:', {
+        isBuffer: Buffer.isBuffer(pdfBuffer),
+        length: pdfBuffer ? pdfBuffer.length : 0
+      });
       return next(new ErrorResponse('PDF generation failed - invalid PDF document', 500));
     }
     
@@ -279,7 +291,7 @@ export const downloadPDF = asyncHandler(async (req, res, next) => {
     });
     
     // Send PDF buffer directly
-    res.end(pdfBuffer);
+    res.send(pdfBuffer);
   } catch (error) {
     console.error('PDF generation error:', error);
     return next(new ErrorResponse(`Failed to generate PDF: ${error.message}`, 500));
