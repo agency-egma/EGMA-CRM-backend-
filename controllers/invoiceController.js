@@ -253,56 +253,76 @@ export const getPaymentStatus = asyncHandler(async (req, res, next) => {
 
 // Download invoice as PDF
 export const downloadPDF = asyncHandler(async (req, res, next) => {
+  const requestId = `pdf-${req.params.id}-${Date.now()}`;
+  console.log(`[PDF:${requestId}] PDF download request for invoice ${req.params.id} - User: ${req.user.id}`);
+  
+  // Log request information to help diagnose issues
+  const userAgent = req.get('User-Agent') || 'Unknown';
+  const acceptHeader = req.get('Accept') || 'Not specified';
+  console.log(`[PDF:${requestId}] Request headers: Accept=${acceptHeader}, User-Agent=${userAgent.substring(0, 100)}`);
+  
   try {
-    console.log(`PDF download request for invoice ${req.params.id} - User: ${req.user.id}`);
-    
     const invoice = await Invoice.findById(req.params.id);
     
     if (!invoice) {
+      console.log(`[PDF:${requestId}] Invoice not found with id ${req.params.id}`);
       return next(new ErrorResponse(`Invoice not found with id ${req.params.id}`, 404));
     }
     
-    // Check if this user has permission to access the invoice
-    // (You can customize this check based on your application's logic)
+    console.log(`[PDF:${requestId}] Invoice found: ${invoice.invoiceNumber}, items: ${invoice.goods?.length || 0}`);
     
-    // Generate PDF with timeout
-    const pdfGenerationTimeout = setTimeout(() => {
-      throw new Error('PDF generation timed out after 30 seconds');
-    }, 30000);
-    
-    // Generate PDF
-    const pdfBuffer = await generateInvoicePDF(invoice);
-    
-    // Clear timeout
-    clearTimeout(pdfGenerationTimeout);
-    
-    // Validate PDF Buffer
-    if (!pdfBuffer || !Buffer.isBuffer(pdfBuffer) || pdfBuffer.length < 1000) {
-      console.error('PDF generation produced invalid output');
-      return next(new ErrorResponse('PDF generation failed - invalid PDF document', 500));
+    try {
+      // Prevent timeout on slow servers
+      req.setTimeout(120000); // 2 minutes
+      console.log(`[PDF:${requestId}] Request timeout increased to 120 seconds`);
+      
+      // Generate PDF
+      console.log(`[PDF:${requestId}] Calling PDF generator function`);
+      const startTime = Date.now();
+      const pdfBuffer = await generateInvoicePDF(invoice);
+      const duration = Date.now() - startTime;
+      
+      // Validate PDF Buffer
+      if (!pdfBuffer || pdfBuffer.length < 1000) {
+        console.error(`[PDF:${requestId}] Invalid PDF generated: ${pdfBuffer?.length || 0} bytes`);
+        return next(new ErrorResponse('PDF generation failed - invalid PDF document', 500));
+      }
+      
+      console.log(`[PDF:${requestId}] PDF successfully generated in ${duration}ms, size: ${pdfBuffer.length} bytes`);
+      
+      // Set proper content type and headers for PDF
+      res.set({
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': `attachment; filename="Invoice-${invoice.invoiceNumber}.pdf"`,
+        'Content-Length': pdfBuffer.length,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0'
+      });
+      
+      console.log(`[PDF:${requestId}] Sending PDF response`);
+      
+      // Send PDF buffer directly
+      res.end(pdfBuffer);
+      console.log(`[PDF:${requestId}] PDF response sent successfully`);
+    } catch (error) {
+      console.error(`[PDF:${requestId}] PDF generation error:`, error);
+      
+      // Create a detailed error log with stack trace
+      const errorDetails = {
+        message: error.message,
+        stack: error.stack,
+        code: error.code,
+        name: error.name
+      };
+      
+      console.error(`[PDF:${requestId}] Error details:`, JSON.stringify(errorDetails, null, 2));
+      
+      return next(new ErrorResponse(`Failed to generate PDF: ${error.message}`, 500));
     }
-    
-    console.log(`Successfully generated PDF for invoice ${req.params.id}, size: ${pdfBuffer.length} bytes`);
-    
-    // Set proper content type and headers for PDF
-    res.set({
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': `attachment; filename="Invoice-${invoice.invoiceNumber}.pdf"`,
-      'Content-Length': pdfBuffer.length,
-      'Cache-Control': 'no-cache, no-store, must-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0',
-      // Explicitly allow CORS for PDF download
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-    });
-    
-    // Send PDF buffer directly
-    res.send(pdfBuffer);
   } catch (error) {
-    console.error('PDF generation error:', error);
-    return next(new ErrorResponse(`Failed to generate PDF: ${error.message}`, 500));
+    console.error(`[PDF:${requestId}] Controller error:`, error);
+    return next(new ErrorResponse(`PDF generation failed: ${error.message}`, 500));
   }
 });
 

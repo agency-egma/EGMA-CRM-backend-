@@ -19,77 +19,28 @@ const template = Handlebars.compile(templateContent, {
 });
 
 // Register helper for formatting currency
-Handlebars.registerHelper('formatCurrency', function(value, currencyCode = 'INR', currencySymbol = '₹') {
-  try {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: currencyCode,
-      minimumFractionDigits: 2
-    }).format(value || 0);
-  } catch (error) {
-    // Fallback to basic formatting if Intl fails
-    return `${currencySymbol}${(value || 0).toFixed(2)}`;
-  }
+Handlebars.registerHelper('formatCurrency', function(value) {
+  return new Intl.NumberFormat('en-IN', {
+    style: 'currency',
+    currency: 'INR',
+    minimumFractionDigits: 2
+  }).format(value || 0); // Add fallback to handle undefined values
 });
 
 // Register helper for formatting dates
 Handlebars.registerHelper('formatDate', function(date) {
   if (!date) return 'Not set';
-  try {
-    return new Date(date).toLocaleDateString('en-US', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric'
-    });
-  } catch (error) {
-    // Fallback to ISO string if date formatting fails
-    return new Date(date).toISOString().split('T')[0];
-  }
+  return new Date(date).toLocaleDateString('en-US', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  });
 });
 
 // Add helper for addition (needed for combining total + taxAmount)
 Handlebars.registerHelper('add', function(a, b) {
   return (a || 0) + (b || 0);
 });
-
-// Track browser instance for resource management
-let browserInstance = null;
-
-/**
- * Get a browser instance (cached for performance)
- * @returns {Promise<Browser>} Puppeteer browser instance
- */
-const getBrowser = async () => {
-  if (browserInstance) {
-    return browserInstance;
-  }
-  
-  // Launch with production-friendly options
-  browserInstance = await puppeteer.launch({
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-gpu',
-      '--font-render-hinting=none'
-    ],
-    headless: 'new',
-    timeout: 30000
-  });
-  
-  // Handle browser closure on process exit
-  process.on('exit', async () => {
-    if (browserInstance) {
-      try {
-        await browserInstance.close();
-      } catch (error) {
-        console.error('Error closing browser on exit:', error);
-      }
-    }
-  });
-  
-  return browserInstance;
-};
 
 /**
  * Generate PDF from invoice data
@@ -98,17 +49,16 @@ const getBrowser = async () => {
  */
 export const generateInvoicePDF = async (invoice) => {
   let browser = null;
-  let page = null;
+  const requestId = `pdf-${invoice._id || 'new'}-${Date.now()}`;
+  
+  console.log(`[PDF:${requestId}] Starting PDF generation for invoice ${invoice._id || 'New Invoice'}`);
+  console.log(`[PDF:${requestId}] System info: Node ${process.version}, Puppeteer ${puppeteer.version || 'unknown'}`);
+  console.log(`[PDF:${requestId}] Invoice details: Number=${invoice.invoiceNumber}, Items=${invoice.goods?.length || 0}`);
   
   try {
-    console.log('Starting PDF generation for invoice:', invoice._id || 'New Invoice');
-    
     // Create a clean copy of the invoice data to avoid prototype chain issues
     const safeInvoice = JSON.parse(JSON.stringify(invoice));
-    
-    // Extract currency information
-    const currencyCode = safeInvoice.currency?.code || 'INR';
-    const currencySymbol = safeInvoice.currency?.symbol || '₹';
+    console.log(`[PDF:${requestId}] Invoice data sanitized`);
     
     // Prepare the data for the template
     const data = {
@@ -119,216 +69,209 @@ export const generateInvoicePDF = async (invoice) => {
       isPending: safeInvoice.payment.status === 'pending',
       isOverdue: safeInvoice.payment.status === 'overdue',
       isDraft: safeInvoice.payment.status === 'draft',
-      isCancelled: safeInvoice.payment.status === 'cancelled',
-      currencySymbol,
-      currencyCode
+      isCancelled: safeInvoice.payment.status === 'cancelled'
     };
+    console.log(`[PDF:${requestId}] Template data prepared`);
 
     // Render HTML with Handlebars
+    console.log(`[PDF:${requestId}] Rendering HTML template`);
     const html = template(data);
+    console.log(`[PDF:${requestId}] Template rendered successfully, HTML length: ${html.length} characters`);
 
-    // Get browser instance with retry logic
-    let retries = 3;
-    while (retries > 0) {
-      try {
-        browser = await getBrowser();
-        break;
-      } catch (error) {
-        retries--;
-        console.error(`Error launching browser, ${retries} retries left:`, error);
-        
-        // Reset browser instance on error
-        browserInstance = null;
-        
-        if (retries === 0) {
-          throw new Error('Failed to launch browser after multiple attempts');
-        }
-        
-        // Wait before retrying
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
+    // Launch puppeteer with more robust options
+    console.log(`[PDF:${requestId}] Launching Puppeteer browser`);
+    const browserArgs = [
+      '--no-sandbox', 
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--font-render-hinting=none'
+    ];
+    console.log(`[PDF:${requestId}] Browser args: ${browserArgs.join(', ')}`);
+    
+    try {
+      browser = await puppeteer.launch({
+        args: browserArgs,
+        headless: 'new'
+      });
+      console.log(`[PDF:${requestId}] Browser launched successfully`);
+    } catch (browserError) {
+      console.error(`[PDF:${requestId}] Failed to launch browser: ${browserError.message}`);
+      throw new Error(`Browser launch failed: ${browserError.message}`);
     }
 
-    // Create a new page with error handling
+    // Create a new page
+    let page;
     try {
       page = await browser.newPage();
-    } catch (error) {
-      console.error('Error creating page, attempting browser restart:', error);
-      
-      // Try to close and reset browser
-      if (browserInstance) {
-        try {
-          await browserInstance.close();
-        } catch (closeError) {
-          console.error('Error closing browser:', closeError);
-        }
-        browserInstance = null;
-      }
-      
-      // Retry with a new browser instance
-      browser = await getBrowser();
-      page = await browser.newPage();
+      console.log(`[PDF:${requestId}] Browser page created`);
+    } catch (pageError) {
+      console.error(`[PDF:${requestId}] Failed to create page: ${pageError.message}`);
+      throw new Error(`Page creation failed: ${pageError.message}`);
     }
     
-    // Set viewport to A4 size with higher resolution for better quality
-    await page.setViewport({
-      width: 794, // A4 width in pixels (72 dpi)
-      height: 1123, // A4 height
-      deviceScaleFactor: 2 // Higher resolution
-    });
-    
-    // Set the content with robust timeout and wait options
-    await page.setContent(html, { 
-      waitUntil: ['networkidle0', 'domcontentloaded', 'load'],
-      timeout: 30000
-    });
-
-    // Give extra time for fonts and resources to load
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Evaluate content height and fix layout issues
-    await page.evaluate((currencySymbol) => {
-      // Format currencies manually as a fallback
-      document.querySelectorAll('.currency-value').forEach(el => {
-        if (el.textContent.trim() === '') {
-          const amount = parseFloat(el.getAttribute('data-amount') || 0);
-          el.textContent = `${currencySymbol}${amount.toFixed(2)}`;
-        }
+    // Set viewport to A4 size
+    try {
+      await page.setViewport({
+        width: 794, // A4 width in pixels (72 dpi)
+        height: 1123, // A4 height
+        deviceScaleFactor: 1.5 // Higher resolution
       });
-      
-      const notesSection = document.querySelector('.notes-section');
-      const termsSection = document.querySelector('.terms-section');
-      
-      // If either section doesn't exist, no need to proceed
-      if ((!notesSection && !termsSection)) return;
-      
-      // Get the main content container
-      const mainContent = document.querySelector('.invoice-items-container');
-      if (!mainContent) return;
-      
-      // Calculate the height of the page and main content
-      const pageHeight = document.body.clientHeight;
-      const mainContentRect = mainContent.getBoundingClientRect();
-      const mainContentBottom = mainContentRect.bottom;
-      
-      // Create a container for notes and terms to keep them together
-      const footerContainer = document.createElement('div');
-      footerContainer.classList.add('footer-container');
-      
-      // Apply consistent styling for both cases
-      footerContainer.style.pageBreakInside = 'avoid';
-      footerContainer.style.marginTop = '2rem';
-      footerContainer.style.paddingTop = '1rem';
-      
-      // If main content takes up more than 75% of the page height, move notes and terms to second page
-      if (mainContentBottom > pageHeight * 0.75) {
-        footerContainer.style.pageBreakBefore = 'always';
-        // Add extra styling for second page
-        footerContainer.style.paddingTop = '2rem';
-        footerContainer.style.marginTop = '0';
-      }
-      
-      // Insert the container before the notes/terms and move them inside
-      if (notesSection) {
-        notesSection.parentNode.insertBefore(footerContainer, notesSection);
-        footerContainer.appendChild(notesSection);
-      }
-      
-      if (termsSection) {
-        if (notesSection) {
-          footerContainer.appendChild(termsSection);
-        } else {
-          termsSection.parentNode.insertBefore(footerContainer, termsSection);
-          footerContainer.appendChild(termsSection);
-        }
-      }
-    }, currencySymbol);
+      console.log(`[PDF:${requestId}] Viewport set to A4 size`);
+    } catch (viewportError) {
+      console.error(`[PDF:${requestId}] Failed to set viewport: ${viewportError.message}`);
+      // Continue execution as this isn't critical
+    }
+    
+    // Set the content with longer wait options to ensure complete rendering
+    try {
+      console.log(`[PDF:${requestId}] Setting page content (HTML length: ${html.length} characters)`);
+      await page.setContent(html, { 
+        waitUntil: ['networkidle0', 'domcontentloaded', 'load']
+      });
+      console.log(`[PDF:${requestId}] Page content set successfully`);
+    } catch (contentError) {
+      console.error(`[PDF:${requestId}] Failed to set page content: ${contentError.message}`);
+      throw new Error(`Content loading failed: ${contentError.message}`);
+    }
 
-    // Add custom styles for better PDF rendering
-    await page.addStyleTag({
-      content: `
-        @page {
-          size: A4;
-          margin: 0;
+    // Use a manual delay instead of waitForTimeout
+    console.log(`[PDF:${requestId}] Waiting for content to settle`);
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
+    // Check content height and determine if we need to force page breaks
+    try {
+      console.log(`[PDF:${requestId}] Evaluating document structure`);
+      await page.evaluate(() => {
+        const notesSection = document.querySelector('.notes-section');
+        const termsSection = document.querySelector('.terms-section');
+        
+        // If either section doesn't exist, no need to proceed
+        if ((!notesSection && !termsSection)) return;
+        
+        // Get the main content container
+        const mainContent = document.querySelector('.invoice-items-container');
+        if (!mainContent) return;
+        
+        // Calculate the height of the page and main content
+        const pageHeight = document.body.clientHeight;
+        const mainContentRect = mainContent.getBoundingClientRect();
+        const mainContentBottom = mainContentRect.bottom;
+        
+        // Create a container for notes and terms to keep them together
+        const footerContainer = document.createElement('div');
+        footerContainer.classList.add('footer-container');
+        
+        // Apply consistent styling for both cases
+        footerContainer.style.pageBreakInside = 'avoid';
+        footerContainer.style.marginTop = '2rem';
+        footerContainer.style.paddingTop = '1rem';
+        
+        // If main content takes up more than 75% of the page height, move notes and terms to second page
+        if (mainContentBottom > pageHeight * 0.75) {
+          footerContainer.style.pageBreakBefore = 'always';
+          // Add extra styling for second page
+          footerContainer.style.paddingTop = '2rem';
+          footerContainer.style.marginTop = '0';
         }
-        body {
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
+        
+        // Insert the container before the notes/terms and move them inside
+        if (notesSection) {
+          notesSection.parentNode.insertBefore(footerContainer, notesSection);
+          footerContainer.appendChild(notesSection);
         }
-        .footer-container {
-          break-inside: avoid;
-          page-break-inside: avoid;
-          padding: 0 20px;
-        }
-        .footer-container[style*="page-break-before: always"] {
-          padding-top: 40px;
-          min-height: 100px;
-        }
-        @media print {
-          .page-break { 
-            page-break-before: always; 
+        
+        if (termsSection) {
+          if (notesSection) {
+            footerContainer.appendChild(termsSection);
+          } else {
+            termsSection.parentNode.insertBefore(footerContainer, termsSection);
+            footerContainer.appendChild(termsSection);
           }
         }
-      `
-    });
+      });
+      console.log(`[PDF:${requestId}] Document structure evaluation complete`);
+    } catch (evalError) {
+      console.error(`[PDF:${requestId}] Document structure evaluation failed: ${evalError.message}`);
+      // Continue execution as this isn't critical
+    }
 
-    // Generate PDF with production-safe settings
-    const pdfBuffer = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: {
-        top: '20px',
-        right: '20px',
-        bottom: '20px',
-        left: '20px'
-      },
-      preferCSSPageSize: false,
-      displayHeaderFooter: false,
-      scale: 0.98, // Slightly scale down to ensure everything fits
-      timeout: 60000 // 60 seconds timeout
-    });
+    // Add custom styles for better PDF rendering
+    try {
+      await page.addStyleTag({
+        content: `
+          @page {
+            size: A4;
+            margin: 0;
+          }
+          body {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          .footer-container {
+            break-inside: avoid;
+            page-break-inside: avoid;
+            padding: 0 20px;
+          }
+          .footer-container[style*="page-break-before: always"] {
+            padding-top: 40px;
+            min-height: 100px;
+          }
+        `
+      });
+      console.log(`[PDF:${requestId}] Custom print styles added`);
+    } catch (styleError) {
+      console.error(`[PDF:${requestId}] Failed to add styles: ${styleError.message}`);
+      // Continue execution as this isn't critical
+    }
+
+    // Generate PDF with more specific settings
+    console.log(`[PDF:${requestId}] Generating PDF file`);
+    const startTime = Date.now();
+    let pdfBuffer;
+    
+    try {
+      pdfBuffer = await page.pdf({
+        format: 'A4',
+        printBackground: true,
+        margin: {
+          top: '20px',
+          right: '20px',
+          bottom: '20px',
+          left: '20px'
+        },
+        preferCSSPageSize: false,
+        displayHeaderFooter: false,
+        scale: 0.98, // Slightly scale down to ensure everything fits
+        timeout: 60000 // 60 seconds timeout
+      });
+      
+      const duration = Date.now() - startTime;
+      console.log(`[PDF:${requestId}] PDF generated in ${duration}ms, size: ${pdfBuffer.length} bytes`);
+    } catch (pdfError) {
+      console.error(`[PDF:${requestId}] PDF generation failed: ${pdfError.message}`);
+      throw new Error(`PDF creation failed: ${pdfError.message}`);
+    }
 
     // Validate the PDF buffer
     if (!pdfBuffer || pdfBuffer.length < 1000) {
+      console.error(`[PDF:${requestId}] Generated PDF is invalid or too small: ${pdfBuffer?.length || 0} bytes`);
       throw new Error('Generated PDF is invalid or too small');
     }
 
-    console.log(`PDF generation successful, size: ${pdfBuffer.length} bytes`);
+    console.log(`[PDF:${requestId}] PDF generation completed successfully`);
     return pdfBuffer;
   } catch (error) {
-    console.error('Error generating PDF:', error);
-    throw new Error(`PDF generation failed: ${error.message}`);
+    console.error(`[PDF:${requestId}] Error generating PDF:`, error);
+    throw new Error(`Failed to generate PDF: ${error.message}`);
   } finally {
-    // Close the page but keep the browser instance
-    if (page) {
-      try {
-        await page.close();
-      } catch (closeError) {
-        console.error('Error closing page:', closeError);
-      }
-    }
-    
-    // In case of browser creation but not added to global instance 
-    if (browser && browser !== browserInstance) {
+    // Always close the browser to clean up resources
+    if (browser) {
       try {
         await browser.close();
+        console.log(`[PDF:${requestId}] Browser closed successfully`);
       } catch (closeError) {
-        console.error('Error closing temporary browser:', closeError);
+        console.error(`[PDF:${requestId}] Error closing browser: ${closeError.message}`);
       }
     }
   }
 };
-
-// Graceful shutdown handler
-process.on('SIGINT', async () => {
-  console.log('Received SIGINT, closing browser instance');
-  if (browserInstance) {
-    try {
-      await browserInstance.close();
-    } catch (error) {
-      console.error('Error closing browser on SIGINT:', error);
-    }
-    browserInstance = null;
-  }
-  process.exit(0);
-});
