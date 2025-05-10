@@ -298,7 +298,6 @@ export const downloadPDF = asyncHandler(async (req, res, next) => {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache',
         'Expires': '0',
-        // Add header to prevent browser modifications
         'X-Content-Type-Options': 'nosniff'
       });
       

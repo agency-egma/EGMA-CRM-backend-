@@ -6,42 +6,47 @@
   <title>Invoice #{{invoice.invoiceNumber}}</title>
   <style>
     @page {
-      margin: 0;
+      margin: 0 !important;
+      padding: 0 !important;
       size: A4;
+      background-color: #1E293B !important;
     }
-    
+
     html, body {
-      margin: 0;
-      padding: 0;
+      margin: 0 !important;
+      padding: 0 !important;
       width: 100%;
       height: 100%;
-      background-color: #1E293B;
+      min-height: 100%;
+      background-color: #1E293B !important;
+      border: none !important;
+      overflow: visible;
     }
     
     body {
       font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       color: #E2E8F0;
       line-height: 1.5;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color-adjust: exact !important;
     }
     
     .page-wrapper {
       position: relative;
-      width: 100%;
+      background-color: #1E293B !important;
+      margin: 0 !important;
+      padding: 0 !important;
       min-height: 100%;
-      background-color: #1E293B;
-      padding: 0;
-      margin: 0;
       box-sizing: border-box;
     }
     
     .container {
+      box-sizing: border-box;
       max-width: 800px;
       margin: 0 auto;
       padding: 30px;
-      background-color: #1E293B;
-      box-sizing: border-box;
+      background-color: #1E293B !important;
     }
     
     .header {
@@ -259,22 +264,127 @@
       margin-top: 2rem;
     }
     
+    /* Notes and Terms container with better page break handling */
+    .footer-info {
+      margin-top: 2rem;
+      page-break-inside: avoid;
+    }
+    
+    /* Add styling for page breaks with better top margin */
+    .page-break {
+      page-break-before: always;
+      padding-top: 100px !important;
+      margin-top: 100px !important;
+    }
+    
+    /* Style to add top margin to content after page break */
+    .page-break-content {
+      padding-top: 100px !important;
+    }
+    
+    /* Force more space at the top when content breaks to a new page */
+    .second-page-content {
+      padding-top: 100px !important;
+      margin-top: 100px !important;
+    }
+    
+    /* Explicitly style content on second page */
+    @page {
+      margin: 0 !important;
+      padding: 0 !important;
+      size: A4;
+      background-color: #1E293B !important;
+    }
+    
+    /* Target non-first pages explicitly - fixed syntax */
+    @page :first {
+      margin: 0 !important;
+    }
+    
+    @page :left {
+      margin-top: 60px !important;
+      background-color: #1E293B !important;
+    }
+    
+    @page :right {
+      margin-top: 60px !important;
+      background-color: #1E293B !important;
+    }
+    
+    /* Additional page rules for second and subsequent pages */
+    .second-page {
+      margin-top: 60px !important;
+    }
+    
     @media print {
+      @page {
+        margin: 0 !important;
+        padding: 0 !important;
+        size: A4;
+        background-color: #1E293B !important;
+      }
+      
       html, body, .page-wrapper {
-        background-color: #1E293B;
-        width: 100%;
-        height: 100%;
+        background-color: #1E293B !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        min-height: 100%;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
+      
+      .page-wrapper::before,
+      .page-wrapper::after {
+        content: "";
+        position: fixed;
+        top: 0;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        background: #1E293B !important;
+        z-index: -10;
         margin: 0;
         padding: 0;
       }
       
-      body {
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
+      .container {
+        padding: 30px;
+        margin: 0 auto;
       }
       
-      .container {
+      .footer-info {
         page-break-inside: avoid;
+        break-inside: avoid;
+        padding-top: 30px; /* Add padding when footer is on a new page */
+      }
+      
+      /* Add top margin to second and subsequent pages */
+      .page-break {
+        margin-top: 30px;
+      }
+      
+      /* If the content naturally breaks to a new page, also add margin */
+      @page {
+        margin-top: 30px !important;
+      }
+      
+      /* If footer info breaks to a new page, ensure proper spacing */
+      .footer-info.page-break {
+        margin-top: 100px !important;
+        padding-top: 100px !important;
+      }
+      
+      /* Add force break for second page content */
+      .second-page-content {
+        margin-top: 60px;
+      }
+      
+      /* Add spacer element */
+      .page-break-spacer {
+        height: 100px !important;
+        background-color: #1E293B;
+        display: block !important;
       }
     }
     
@@ -290,6 +400,10 @@
   </style>
 </head>
 <body>
+  <!-- Add multiple background layers to ensure coverage -->
+  <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #1E293B; z-index: -1000;"></div>
+  <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: #1E293B; z-index: -999;"></div>
+
   <div class="page-wrapper">
     <div class="container">
       <div class="header">
@@ -470,20 +584,57 @@
         {{/if}}
       </div>
       
-      {{#if invoice.notes}}
-        <div class="section notes-section">
-          <div class="section-title">Notes</div>
-          <div class="section-content">{{invoice.notes}}</div>
-        </div>
-      {{/if}}
-      
-      {{#if invoice.terms}}
-        <div class="section terms-section">
-          <div class="section-title">Terms and Conditions</div>
-          <div class="section-content">{{invoice.terms}}</div>
-        </div>
-      {{/if}}
+      <!-- Keep notes and terms together by wrapping them in a container -->
+      <div class="footer-info" id="footer-info">
+        <!-- Add a spacer that will only show on page breaks -->
+        <div class="page-break-spacer"></div>
+        
+        {{#if invoice.notes}}
+          <div class="section notes-section">
+            <div class="section-title">Notes</div>
+            <div class="section-content">{{invoice.notes}}</div>
+          </div>
+        {{/if}}
+        
+        {{#if invoice.terms}}
+          <div class="section terms-section">
+            <div class="section-title">Terms and Conditions</div>
+            <div class="section-content">{{invoice.terms}}</div>
+          </div>
+        {{/if}}
+      </div>
     </div>
   </div>
+
+  <script>
+    // This script will run when printing to detect if footer is on a new page
+    window.addEventListener('beforeprint', function() {
+      const footerInfo = document.querySelector('.footer-info');
+      if (footerInfo) {
+        const footerRect = footerInfo.getBoundingClientRect();
+        const pageHeight = window.innerHeight;
+        
+        // If the footer is at the top portion of the page, it's likely on a new page
+        if (footerRect.top < 200) { // Increased detection threshold for better reliability
+          footerInfo.classList.add('page-break');
+          footerInfo.style.paddingTop = '100px';
+          footerInfo.style.marginTop = '100px';
+          
+          // Force the spacer to be visible and taller
+          const spacer = footerInfo.querySelector('.page-break-spacer');
+          if (spacer) {
+            spacer.style.display = 'block';
+            spacer.style.height = '100px';
+          }
+        } else {
+          // Hide the spacer if the footer is not at the top
+          const spacer = footerInfo.querySelector('.page-break-spacer');
+          if (spacer) {
+            spacer.style.display = 'none';
+          }
+        }
+      }
+    });
+  </script>
 </body>
 </html>
