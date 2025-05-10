@@ -297,7 +297,9 @@ export const downloadPDF = asyncHandler(async (req, res, next) => {
         'Content-Length': pdfBuffer.length,
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'Pragma': 'no-cache',
-        'Expires': '0'
+        'Expires': '0',
+        // Add header to prevent browser modifications
+        'X-Content-Type-Options': 'nosniff'
       });
       
       console.log(`[PDF:${requestId}] Sending PDF response`);

@@ -120,12 +120,27 @@ async function tryGeneratePDFWithHtmlPdfNode(html, invoice, requestId) {
       throw new Error('html-pdf-node module not available');
     }
     
-    const content = { content: html };
+    // Add full-page wrapper styling
+    const enhancedHtml = `
+      <style>
+        @page { margin: 0; size: A4; }
+        html, body { margin: 0; padding: 0; background-color: #1E293B; }
+        * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      </style>
+      ${html}
+    `;
+    
+    const content = { content: enhancedHtml };
     const options = { 
       format: 'A4',
       printBackground: true,
-      margin: { top: '20px', right: '20px', bottom: '20px', left: '20px' },
-      args: ['--no-sandbox']
+      margin: { top: 0, right: 0, bottom: 0, left: 0 },
+      preferCSSPageSize: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage'
+      ]
     };
     
     const pdfBuffer = await new Promise((resolve, reject) => {
@@ -156,19 +171,36 @@ async function tryGeneratePDFWithHtmlPdf(html, invoice, requestId) {
       throw new Error('html-pdf module not available');
     }
     
+    // Add full-page wrapper styling
+    const enhancedHtml = `
+      <style>
+        @page { margin: 0; size: A4; }
+        html, body { margin: 0; padding: 0; background-color: #1E293B; }
+        * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      </style>
+      ${html}
+    `;
+    
     const options = {
       format: 'A4',
       border: {
-        top: '20px',
-        right: '20px',
-        bottom: '20px',
-        left: '20px'
+        top: '0',
+        right: '0',
+        bottom: '0',
+        left: '0'
       },
+      header: {
+        height: '0'
+      },
+      footer: {
+        height: '0'
+      },
+      base: `file://${process.cwd()}/`,
       timeout: 60000
     };
     
     const pdfBuffer = await new Promise((resolve, reject) => {
-      htmlPdf.create(html, options).toBuffer((err, buffer) => {
+      htmlPdf.create(enhancedHtml, options).toBuffer((err, buffer) => {
         if (err) reject(err);
         else resolve(buffer);
       });
@@ -192,19 +224,22 @@ async function tryGeneratePDFWithPDFKit(html, invoice, requestId) {
     // Dynamically import to handle optional dependency
     const PDFDocument = (await import('pdfkit')).default;
     
-    // Create a document
+    // Create a document with dark background
     const doc = new PDFDocument({
       size: 'A4',
-      margin: 50,
+      margin: 30,
       info: {
         Title: `Invoice-${invoice.invoiceNumber}`,
         Author: 'EGMA'
       }
     });
     
-    // Collect PDF data chunks
-    const chunks = [];
-    doc.on('data', chunk => chunks.push(chunk));
+    // Add background color to the whole page
+    doc.rect(0, 0, doc.page.width, doc.page.height)
+       .fill('#1E293B');
+    
+    // Set text color to white for visibility against dark background
+    doc.fillColor('#E2E8F0');
     
     // Title
     doc.fontSize(20).text('INVOICE', { align: 'left' });
